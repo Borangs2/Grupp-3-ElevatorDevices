@@ -28,7 +28,43 @@ bool doorStatus = false;
 int currentLevel = 0;
 int targetLevel = 0;
 
+List<CreateElevator> elevators = new List<CreateElevator>
+{
+    new CreateElevator(Guid.NewGuid(), "hej", 1000),
+    new CreateElevator(Guid.NewGuid(), "hej", 1250),
+};
+Console.CursorVisible = false;
 
+
+string statusBoard = "";
+int amountOfElevator = 0;
+foreach (var elevator in elevators)
+{
+    amountOfElevator += 1;
+    elevator.CreteElevator();
+    statusBoard += $"{amountOfElevator}: {elevator.StatusMessage} \n";
+}
+
+
+Console.Write(statusBoard);
+while (true)
+{
+    await Task.Delay(25);
+    statusBoard = "";
+
+    int i = 0;
+    foreach (var elevator in elevators)
+    {
+        i++;
+        statusBoard += $"{i}: {elevator.StatusMessage} \n";
+    }
+
+    if (i == amountOfElevator)
+    {
+        Console.SetCursorPosition(0, 0);
+    }
+    Console.Write($"{statusBoard}");
+}
 
 
 Console.WriteLine("Initializing Device. Please wait ...");
