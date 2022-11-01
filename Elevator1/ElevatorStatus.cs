@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Elevator1
 {
-    enum ElevatorStatus
+    public enum ElevatorStatus
     {
         Open,
         Idle,
