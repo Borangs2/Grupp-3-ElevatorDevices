@@ -11,6 +11,7 @@ using System.Net.Http.Json;
 using Microsoft.Azure.Devices.Client;
 using Microsoft.Azure.Devices.Shared;
 using static Microsoft.Azure.Amqp.Serialization.SerializableType;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Elevator1
 {
@@ -81,11 +82,13 @@ namespace Elevator1
 
 
             await _deviceClient.SetMethodHandlerAsync("ChangeLevel", ChangeLevel, null);
+            await _deviceClient.SetMethodHandlerAsync("ResetElevator", ResetElevator, null);
+            await _deviceClient.SetMethodHandlerAsync("OpenDoors", OpenDoors, null);
+            await _deviceClient.SetMethodHandlerAsync("CloseDoors", CloseDoors, null);
 
             Elevator.IsConnected = true;
             StatusMessage = "Device Connected:                  ██████████";
 
-            await Task.Delay(2000);
             KeepActive(_deviceClient);
 
 
@@ -132,6 +135,43 @@ namespace Elevator1
             //        Task.Delay(TimeSpan.FromSeconds(4));
             //    }
             //}
+
+            //return Task.FromResult(new MethodResponse(new byte[0], 200));
+        }
+
+        
+        public Task<MethodResponse> ResetElevator(MethodRequest methodRequest, object userContext)
+        {
+            Elevator.CurrentLevel = 0;
+            Elevator.TargetLevel = 0;
+            Elevator.Status = ElevatorStatus.Disabled;
+            Elevator.DoorStatus = false;
+
+            var twinCollection = new TwinCollection();
+            twinCollection["currentLevel"] = 0;
+            twinCollection["targetLevel"] = 0;
+            twinCollection["status"] = ElevatorStatus.Disabled;
+            twinCollection["doorStatus"] = false;
+
+            return Task.FromResult(new MethodResponse(new byte[0], 200));
+        }
+
+        public Task<MethodResponse> OpenDoors(MethodRequest methodRequest, object userContext)
+        {
+            Elevator.DoorStatus = true;
+
+            var twinCollection = new TwinCollection();
+            twinCollection["doorStatus"] = true;
+
+            return Task.FromResult(new MethodResponse(new byte[0], 200));
+        }
+
+        public Task<MethodResponse> CloseDoors(MethodRequest methodRequest, object userContext)
+        {
+            Elevator.DoorStatus = false;
+
+            var twinCollection = new TwinCollection();
+            twinCollection["doorStatus"] = false;
 
             return Task.FromResult(new MethodResponse(new byte[0], 200));
         }
