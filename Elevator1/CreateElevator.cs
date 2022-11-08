@@ -34,69 +34,78 @@ namespace Elevator1
 
         public  async Task CreteElevator()
         {
-            StatusMessage = "Initializing device:               ----------";
-
-
-            using IDbConnection connection = new SqlConnection(DbConnectionString);
-
-            if (await connection.QueryFirstOrDefaultAsync<Guid>("SELECT Id FROM Elevators WHERE Id = @DeviceId", new { DeviceId = Elevator.Id }) == Guid.Empty)
+            try
             {
-                StatusMessage = "New device detected:               ██--------";
-                
-                await connection.ExecuteAsync(
-                    "INSERT INTO Elevators (id, ConnectionString) VALUES (@deviceId, @ConnectionString)",
-                    new {deviceId = Elevator.Id, ConnectionString = "" });
+                StatusMessage = "Initializing device:               ----------";
+
+
+                using IDbConnection connection = new SqlConnection(DbConnectionString);
+
+                if (await connection.QueryFirstOrDefaultAsync<Guid>("SELECT Id FROM Elevators WHERE Id = @DeviceId", new { DeviceId = Elevator.Id }) == Guid.Empty)
+                {
+                    StatusMessage = "New device detected:               ██--------";
+
+                    await connection.ExecuteAsync(
+                        "INSERT INTO Elevators (id, ConnectionString) VALUES (@deviceId, @ConnectionString)",
+                        new { deviceId = Elevator.Id, ConnectionString = "" });
+                }
+                else
+                {
+                    StatusMessage = "Device detected:                   ██--------";
+                }
+
+
+                var deviceConnectionString = await connection.QueryFirstOrDefaultAsync<string>("SELECT ConnectionString FROM Elevators WHERE Id = @DeviceId", new { DeviceId = Elevator.Id });
+                if (string.IsNullOrEmpty(deviceConnectionString))
+                {
+                    StatusMessage = "Initializing Connection string:    ████------";
+
+                    using var http = new HttpClient();
+                    var result = await http.PostAsJsonAsync($"{_connectUrl}?DeviceId={Elevator.Id}", new { DeviceId = Elevator.Id });
+                    StatusMessage = "Connecting device:                 ██████----";
+
+                    deviceConnectionString = await result.Content.ReadAsStringAsync();
+                    await connection.ExecuteAsync("UPDATE Elevators SET ConnectionString = @ConnectionString WHERE Id = @DeviceId",
+                        new { DeviceId = Elevator.Id, ConnectionString = deviceConnectionString });
+                }
+
+                DeviceClient _deviceClient = DeviceClient.CreateFromConnectionString(IoTHubConnectionString, Elevator.Id.ToString());
+
+                StatusMessage = "Updating twin properties           ████████--";
+                var twinCollection = new TwinCollection();
+                twinCollection["deviceName"] = Elevator.Name.ToLower();
+                twinCollection["status"] = Elevator.Status.ToString().ToLower();
+                twinCollection["doorStatus"] = Elevator.DoorStatus;
+                twinCollection["currentLevel"] = Elevator.CurrentLevel;
+                twinCollection["targetLevel"] = Elevator.TargetLevel;
+                await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+
+                var twin = await _deviceClient.GetTwinAsync();
+
+
+                await _deviceClient.SetMethodHandlerAsync("ChangeLevel", ChangeLevel, null);
+                await _deviceClient.SetMethodHandlerAsync("ResetElevator", ResetElevator, null);
+                await _deviceClient.SetMethodHandlerAsync("OpenDoors", OpenDoors, null);
+                await _deviceClient.SetMethodHandlerAsync("CloseDoors", CloseDoors, null);
+
+                Elevator.IsConnected = true;
+                StatusMessage = "Device Connected:                  ██████████";
+
+                KeepActive(_deviceClient);
+
+
+                while (true)
+                {
+                    StatusMessage = $"{Elevator.Name}: Current level: {Elevator.CurrentLevel}, Target level: {Elevator.TargetLevel}                      ";
+                    await Task.Delay(TimeSpan.FromSeconds(2));
+                }
             }
-            else
+            catch
             {
-                StatusMessage = "Device detected:                   ██--------";
+                StatusMessage = "Something went wrong";
+
             }
-
-
-            var deviceConnectionString = await connection.QueryFirstOrDefaultAsync<string>("SELECT ConnectionString FROM Elevators WHERE Id = @DeviceId", new { DeviceId = Elevator.Id });
-            if (string.IsNullOrEmpty(deviceConnectionString))
-            {
-                StatusMessage = "Initializing Connection string:    ████------";
-
-                using var http = new HttpClient();
-                var result = await http.PostAsJsonAsync($"{_connectUrl}?DeviceId={Elevator.Id}", new { DeviceId = Elevator.Id });
-                StatusMessage = "Connecting device:                 ██████----";
-
-                deviceConnectionString = await result.Content.ReadAsStringAsync();
-                await connection.ExecuteAsync("UPDATE Elevators SET ConnectionString = @ConnectionString WHERE Id = @DeviceId",
-                    new { DeviceId = Elevator.Id, ConnectionString = deviceConnectionString });
-            }
-
-            DeviceClient _deviceClient = DeviceClient.CreateFromConnectionString(IoTHubConnectionString, Elevator.Id.ToString());
-
-            StatusMessage = "Updating twin properties           ████████--";
-            var twinCollection = new TwinCollection();
-            twinCollection["deviceName"] = Elevator.Name.ToLower();
-            twinCollection["status"] = Elevator.Status.ToString().ToLower();
-            twinCollection["doorStatus"] = Elevator.DoorStatus;
-            twinCollection["currentLevel"] = Elevator.CurrentLevel;
-            twinCollection["targetLevel"] = Elevator.TargetLevel;
-            await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
-
-            var twin = await _deviceClient.GetTwinAsync();
-
-
-            await _deviceClient.SetMethodHandlerAsync("ChangeLevel", ChangeLevel, null);
-            await _deviceClient.SetMethodHandlerAsync("ResetElevator", ResetElevator, null);
-            await _deviceClient.SetMethodHandlerAsync("OpenDoors", OpenDoors, null);
-            await _deviceClient.SetMethodHandlerAsync("CloseDoors", CloseDoors, null);
-
-            Elevator.IsConnected = true;
-            StatusMessage = "Device Connected:                  ██████████";
-
-            KeepActive(_deviceClient);
-
-
-            while (true)
-            {
-                StatusMessage = $"{Elevator.Name}: Current level: {Elevator.CurrentLevel}, Target level: {Elevator.TargetLevel}                      ";
-                await Task.Delay(TimeSpan.FromSeconds(2));
-            }
+            
 
         }
 
