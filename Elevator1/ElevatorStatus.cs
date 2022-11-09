@@ -8,7 +8,6 @@ namespace Elevator1
 {
     public enum ElevatorStatus
     {
-        Open,
         Idle,
         Running,
         DoorsOpen,
