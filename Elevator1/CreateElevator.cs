@@ -10,8 +10,8 @@ using Dapper;
 using System.Net.Http.Json;
 using Microsoft.Azure.Devices.Client;
 using Microsoft.Azure.Devices.Shared;
-using static Microsoft.Azure.Amqp.Serialization.SerializableType;
 using System.ComponentModel.DataAnnotations.Schema;
+using Newtonsoft.Json;
 
 namespace Elevator1
 {
@@ -20,11 +20,13 @@ namespace Elevator1
         public string StatusMessage { get; set; }
         public ElevatorModel Elevator { get; set; }
         private readonly string _connectUrl;
+        private readonly DeviceClient _deviceClient;
+
         public CreateElevator(ElevatorModel elevator, string connectUrl)
         {
             Elevator = elevator;
             _connectUrl = connectUrl;
-
+            _deviceClient = DeviceClient.CreateFromConnectionString(IoTHubConnectionString);
         }
 
         string DbConnectionString =
@@ -69,8 +71,6 @@ namespace Elevator1
                         new { DeviceId = Elevator.Id, ConnectionString = deviceConnectionString });
                 }
 
-                DeviceClient _deviceClient = DeviceClient.CreateFromConnectionString(IoTHubConnectionString, Elevator.Id.ToString());
-
                 StatusMessage = "Updating twin properties           ████████--";
                 var twinCollection = new TwinCollection();
                 twinCollection["deviceName"] = Elevator.Name.ToLower();
@@ -83,15 +83,15 @@ namespace Elevator1
                 var twin = await _deviceClient.GetTwinAsync();
 
 
-                await _deviceClient.SetMethodHandlerAsync("ChangeLevel", ChangeLevel, null);
-                await _deviceClient.SetMethodHandlerAsync("ResetElevator", ResetElevator, null);
-                await _deviceClient.SetMethodHandlerAsync("OpenDoors", OpenDoors, null);
-                await _deviceClient.SetMethodHandlerAsync("CloseDoors", CloseDoors, null);
+                await _deviceClient.SetMethodHandlerAsync("ChangeLevel", ChangeLevelDM, null);
+                await _deviceClient.SetMethodHandlerAsync("ResetElevatorDM", ResetElevatorDM, null);
+                await _deviceClient.SetMethodHandlerAsync("OpenDoors", OpenDoorsDM, null);
+                await _deviceClient.SetMethodHandlerAsync("CloseDoors", CloseDoorsDM, null);
 
                 Elevator.IsConnected = true;
                 StatusMessage = "Device Connected:                  ██████████";
 
-                KeepActive(_deviceClient);
+                KeepActive();
 
 
                 while (true)
@@ -109,47 +109,80 @@ namespace Elevator1
 
         }
 
-        async Task KeepActive(DeviceClient deviceClient)
+        async Task KeepActive()
         {
             var twinCollection = new TwinCollection();
             while (true)
             {
                 twinCollection["update"] = "jag existerar";
-                await deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+                await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
                 await Task.Delay(TimeSpan.FromHours(1));
             }
-
         }
 
-        Task<MethodResponse> ChangeLevel(MethodRequest methodRequest, object userContext)
+        private async Task ResetElevatorAfter10Minutes()
         {
-            throw new NotImplementedException();
+            while (true)
+            {
+                if (DateTime.Compare(Elevator.LastUsed, DateTime.Now.AddMinutes(-10)) > 0)
+                {
+                    await ResetElevatorAsync();
+                }
 
-            //var newLevel = userContext.
-            //doorStatus = false;
-            //targetLevel = newLevel;
-            //if (newLevel != currentLevel)
-            //{
-            //    twinCollection["doorStatus"] = doorStatus;
-            //    twinCollection["targetLevel"] = targetLevel;
-            //    _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
-
-            //    while (currentLevel != targetLevel)
-            //    {
-            //        if (currentLevel > targetLevel)
-            //            currentLevel -= 1;
-            //        if (currentLevel < targetLevel)
-            //            currentLevel += 1;
-
-            //        Task.Delay(TimeSpan.FromSeconds(4));
-            //    }
-            //}
-
-            //return Task.FromResult(new MethodResponse(new byte[0], 200));
+                await Task.Delay(TimeSpan.FromSeconds(10));
+            }
         }
 
-        
-        public Task<MethodResponse> ResetElevator(MethodRequest methodRequest, object userContext)
+        public Task<MethodResponse> ChangeLevelDM(MethodRequest methodRequest, object userContext)
+        {
+            var payload = JsonConvert.DeserializeObject<dynamic>(methodRequest.DataAsJson);
+            ChangeLevelAsync(payload!.newLevel);
+            
+            return Task.FromResult(new MethodResponse(new byte[0], 200));
+        }
+
+        private async Task ChangeLevelAsync(int newLevel)
+        {
+            if (newLevel != Elevator.TargetLevel)
+            {
+                Elevator.DoorStatus = false;
+                Elevator.TargetLevel = newLevel;
+                Elevator.Status = ElevatorStatus.Running;
+
+
+                var twinCollection = new TwinCollection();
+                twinCollection["doorStatus"] = Elevator.DoorStatus;
+                twinCollection["targetLevel"] = Elevator.TargetLevel;
+                twinCollection["status"] = Elevator.Status;
+
+                await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+
+                while (Elevator.CurrentLevel != Elevator.TargetLevel)
+                {
+                    if (Elevator.CurrentLevel > Elevator.TargetLevel)
+                        Elevator.CurrentLevel -= 1;
+                    if (Elevator.CurrentLevel < Elevator.TargetLevel)
+                        Elevator.CurrentLevel += 1;
+
+                    await Task.Delay(TimeSpan.FromSeconds(4));
+                }
+
+                Elevator.DoorStatus = true;
+                Elevator.Status = ElevatorStatus.DoorsOpen;
+
+                twinCollection["status"] = Elevator.Status;
+                twinCollection["doorStatus"] = Elevator.DoorStatus;
+                twinCollection["currentLevel"] = Elevator.TargetLevel;
+                await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+
+
+                await Task.Delay(TimeSpan.FromSeconds(20));
+
+                await CloseDoorsAsync();
+            }
+        }
+
+        private async Task ResetElevatorAsync()
         {
             Elevator.CurrentLevel = 0;
             Elevator.TargetLevel = 0;
@@ -161,35 +194,60 @@ namespace Elevator1
             twinCollection["targetLevel"] = 0;
             twinCollection["status"] = ElevatorStatus.Disabled;
             twinCollection["doorStatus"] = false;
+            await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+        }
+
+        public Task<MethodResponse> ResetElevatorDM(MethodRequest methodRequest, object userContext)
+        {
+            ResetElevatorAsync().ConfigureAwait(false);
 
             return Task.FromResult(new MethodResponse(new byte[0], 200));
         }
 
-        public Task<MethodResponse> OpenDoors(MethodRequest methodRequest, object userContext)
+        private async Task OpenDoorsAsync()
         {
             Elevator.DoorStatus = true;
+            Elevator.Status = ElevatorStatus.DoorsOpen;
 
             var twinCollection = new TwinCollection();
             twinCollection["doorStatus"] = true;
+            twinCollection["status"] = Elevator.Status;
+            await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+        }
+
+        public Task<MethodResponse> OpenDoorsDM(MethodRequest methodRequest, object userContext)
+        {
+            OpenDoorsAsync().ConfigureAwait(false);
 
             return Task.FromResult(new MethodResponse(new byte[0], 200));
         }
 
-        public Task<MethodResponse> CloseDoors(MethodRequest methodRequest, object userContext)
+        private async Task CloseDoorsAsync()
         {
             Elevator.DoorStatus = false;
+            Elevator.Status = ElevatorStatus.Idle;
 
             var twinCollection = new TwinCollection();
             twinCollection["doorStatus"] = false;
+            await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+        }
+
+        public Task<MethodResponse> CloseDoorsDM(MethodRequest methodRequest, object userContext)
+        {
+            CloseDoorsAsync().ConfigureAwait(false);
 
             return Task.FromResult(new MethodResponse(new byte[0], 200));
         }
 
-        public void GoToLowestFloor()
+        public async Task GoToLowestFloorAsync()
         {
             Elevator.TargetLevel = 0;
-            var twinColection = new TwinCollection();
-
+            Elevator.DoorStatus = false;
+            
+            var twinCollection = new TwinCollection();
+            twinCollection["targetLevel"] = Elevator.TargetLevel;
+            twinCollection["doorStatus"] = Elevator.DoorStatus;
+            await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
 
         }
     }
