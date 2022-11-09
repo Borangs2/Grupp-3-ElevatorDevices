@@ -9,4 +9,5 @@ public class ElevatorModel
     public int CurrentLevel { get; set; } = 0;
     public int TargetLevel { get; set; } = 0;
     public bool IsConnected { get; set; } = false;
+    public DateTime LastUsed { get; set; }
 }
