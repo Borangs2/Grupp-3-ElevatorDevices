@@ -8,10 +8,9 @@ namespace Elevator1
 {
     public enum ElevatorStatus
     {
+        Disabled,
         Idle,
         Running,
-        DoorsOpen,
         Error,
-        Disabled
     }
 }
