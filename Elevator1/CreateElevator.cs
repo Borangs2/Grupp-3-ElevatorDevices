@@ -92,7 +92,7 @@ namespace Elevator1
                 StatusMessage = "Device Connected:                  ██████████";
 
                 KeepActive();
-
+                ResetElevatorAfter10Minutes();
 
                 while (true)
                 {
