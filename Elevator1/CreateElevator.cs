@@ -87,6 +87,8 @@ namespace Elevator1
                 await _deviceClient.SetMethodHandlerAsync("ResetElevatorDM", ResetElevatorDM, null);
                 await _deviceClient.SetMethodHandlerAsync("OpenDoors", OpenDoorsDM, null);
                 await _deviceClient.SetMethodHandlerAsync("CloseDoors", CloseDoorsDM, null);
+                await _deviceClient.SetMethodHandlerAsync("TurnOffElevator", TurnOffElevatorDM, null);
+                await _deviceClient.SetMethodHandlerAsync("TurnOnElevatorDM", TurnOnElevatorDM, null);
 
                 Elevator.IsConnected = true;
                 StatusMessage = "Device Connected:                  ██████████";
@@ -267,36 +269,6 @@ namespace Elevator1
                 twinCollection["status"] = Elevator.Status;
                 await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
             }
-        }
-
-        public Task<MethodResponse> TurnOnElevatorDM(MethodRequest methodRequest, object userContext)
-        {
-            TurnOnElevator().ConfigureAwait(false);
-            return Task.FromResult(new MethodResponse(new byte[0], 200));
-        }
-
-        public async Task TurnOnElevator()
-        {
-            Elevator.Status = ElevatorStatus.Idle;
-
-            var twinCollection = new TwinCollection();
-            twinCollection["status"] = Elevator.Status;
-            await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
-        }
-
-        public Task<MethodResponse> TurnOffElevatorDM(MethodRequest methodRequest, object userContext)
-        {
-            TurnOffElevator().ConfigureAwait(false);
-            return Task.FromResult(new MethodResponse(new byte[0], 200));
-        }
-
-        public async Task TurnOffElevator()
-        {
-            Elevator.Status = ElevatorStatus.Disabled;
-
-            var twinCollection = new TwinCollection();
-            twinCollection["status"] = Elevator.Status;
-            await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
         }
 
         public Task<MethodResponse> TurnOnElevatorDM(MethodRequest methodRequest, object userContext)
