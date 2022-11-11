@@ -98,7 +98,7 @@ namespace Elevator1
 
                 while (true)
                 {
-                    StatusMessage = $"{Elevator.Name}: Current level: {Elevator.CurrentLevel}, Target level: {Elevator.TargetLevel}                      ";
+                    StatusMessage = $"{Elevator.Name}: Current level: {Elevator.CurrentLevel}, Target level: {Elevator.TargetLevel}, Status: {Elevator.Status}, doorStatus: {Elevator.DoorStatus}";
                     await Task.Delay(TimeSpan.FromSeconds(2));
                 }
             }
@@ -126,7 +126,7 @@ namespace Elevator1
         {
             while (true)
             {
-                if (DateTime.Compare(Elevator.LastUsed, DateTime.Now.AddMinutes(-10)) > 0)
+                if (DateTime.Compare(Elevator.LastUsed, DateTime.Now.AddMinutes(-10)) < 0)
                 {
                     await GoToLowestFloorAsync();
                 }
@@ -149,7 +149,7 @@ namespace Elevator1
             return Task.FromResult(new MethodResponse(new byte[0], 200));
         }
 
-        private async Task ChangeLevelAsync(int newLevel)
+        public async Task ChangeLevelAsync(int newLevel)
         {
             if(Elevator.Status != ElevatorStatus.Disabled)
             {
@@ -169,40 +169,48 @@ namespace Elevator1
 
                     while (Elevator.CurrentLevel != Elevator.TargetLevel)
                     {
+                        await Task.Delay(TimeSpan.FromSeconds(4));
+
                         if (Elevator.CurrentLevel > Elevator.TargetLevel)
                             Elevator.CurrentLevel -= 1;
                         if (Elevator.CurrentLevel < Elevator.TargetLevel)
                             Elevator.CurrentLevel += 1;
 
-                        await Task.Delay(TimeSpan.FromSeconds(4));
+                        twinCollection["currentLevel"] = Elevator.CurrentLevel;
+                        await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
                     }
 
                     Elevator.DoorStatus = true;
-                    
+                    Elevator.Status = ElevatorStatus.Idle;
+
                     twinCollection["doorStatus"] = Elevator.DoorStatus;
+                    twinCollection["status"] = Elevator.Status;
                     twinCollection["currentLevel"] = Elevator.TargetLevel;
                     await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
 
-                    ResetTimer();
 
                     await Task.Delay(TimeSpan.FromSeconds(20));
 
                     await CloseDoorsAsync();
                 }
             }
+            ResetTimer();
 
-           
         }
 
         private async Task ResetElevatorAsync()
         {
             await ChangeLevelAsync(0);
-            await CloseDoorsAsync();
             Elevator.Status = ElevatorStatus.Disabled;
 
             var twinCollection = new TwinCollection();
             twinCollection["status"] = ElevatorStatus.Disabled;
             await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+        }
+
+        public async Task GoToLowestFloorAsync()
+        {
+            await ChangeLevelAsync(0);
         }
 
         public Task<MethodResponse> ResetElevatorDM(MethodRequest methodRequest, object userContext)
@@ -253,11 +261,6 @@ namespace Elevator1
             CloseDoorsAsync().ConfigureAwait(false);
 
             return Task.FromResult(new MethodResponse(new byte[0], 200));
-        }
-
-        public async Task GoToLowestFloorAsync()
-        {
-            await ChangeLevelAsync(0);
         }
 
         public Task<MethodResponse> TurnOffElevatorDM(MethodRequest methodRequest, object userContext)
