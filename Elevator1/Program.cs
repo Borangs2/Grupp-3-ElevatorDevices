@@ -40,7 +40,6 @@ foreach (var elevator in elevators)
 while (true)
 {
     Console.SetCursorPosition(0, 0);
-    var split = statusBoard.Split("\n");
     statusBoard = "";
     int i = 0;
     foreach (var elevator in elevators)
