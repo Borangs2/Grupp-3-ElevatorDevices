@@ -32,13 +32,14 @@ foreach (var elevator in elevators)
 {
     amountOfElevator += 1;
     elevator.CreteElevator();
+    elevator.Elevator.LastUsed = DateTime.Now;
     statusBoard += $"{amountOfElevator}: {elevator.StatusMessage} \n";
 }
+
 
 while (true)
 {
     Console.SetCursorPosition(0, 0);
-    var split = statusBoard.Split("\n");
     statusBoard = "";
     int i = 0;
     foreach (var elevator in elevators)
