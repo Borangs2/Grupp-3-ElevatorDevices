@@ -102,9 +102,9 @@ namespace Elevator1
                     await Task.Delay(TimeSpan.FromSeconds(2));
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                StatusMessage = "Something went wrong";
+                StatusMessage = $"Something went wrong: {ex}";
 
             }
             
