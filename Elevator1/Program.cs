@@ -9,15 +9,8 @@ using Microsoft.Azure.Devices.Shared;
 
 
 
-string connectUrl = "http://localhost:*port*/api/devices/connect";
+string connectUrl = "https://grupp3azurefunctions.azurewebsites.net/api/devices/connect?";
 
-
-
-
-//Replace port
-Console.Write("What port is being used: ");
-connectUrl = connectUrl.Replace("*port*", Console.ReadLine());
-Console.Clear();
 
 List<CreateElevators> elevators = new List<CreateElevators>
 {
