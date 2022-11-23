@@ -19,10 +19,10 @@ Console.Write("What port is being used: ");
 connectUrl = connectUrl.Replace("*port*", Console.ReadLine());
 Console.Clear();
 
-List<CreateElevator> elevators = new List<CreateElevator>
+List<CreateElevators> elevators = new List<CreateElevators>
 {
-    new CreateElevator(new ElevatorModel{Id = Guid.Parse("0e3c55f3-ea28-4551-8b06-c9dd9b6b3711"), Name = "test1"}, connectUrl),
-    new CreateElevator(new ElevatorModel{Id = Guid.Parse("25967951-1de4-4608-a42c-0938e1c6de83"), Name = "test2"}, connectUrl),
+    new CreateElevators(new ElevatorModel{Id = Guid.Parse("0e3c55f3-ea28-4551-8b06-c9dd9b6b3711"), Name = "test1"}, connectUrl),
+    new CreateElevators(new ElevatorModel{Id = Guid.Parse("25967951-1de4-4608-a42c-0938e1c6de83"), Name = "test2"}, connectUrl),
 };
 
 Console.CursorVisible = false;
@@ -31,7 +31,7 @@ int amountOfElevator = 0;
 foreach (var elevator in elevators)
 {
     amountOfElevator += 1;
-    elevator.CreteElevator();
+    elevator.CreateElevator();
     elevator.Elevator.LastUsed = DateTime.Now;
     statusBoard += $"{amountOfElevator}: {elevator.StatusMessage} \n";
 }

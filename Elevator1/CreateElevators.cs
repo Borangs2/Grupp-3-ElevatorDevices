@@ -15,14 +15,14 @@ using Newtonsoft.Json;
 
 namespace Elevator1
 {
-    public  class CreateElevator
+    public  class CreateElevators
     {
         public string StatusMessage { get; set; }
         public ElevatorModel Elevator { get; set; }
         private readonly string _connectUrl;
         private readonly DeviceClient _deviceClient;
 
-        public CreateElevator(ElevatorModel elevator, string connectUrl)
+        public CreateElevators(ElevatorModel elevator, string connectUrl)
         {
             Elevator = elevator;
             _connectUrl = connectUrl;
@@ -34,7 +34,7 @@ namespace Elevator1
         string IoTHubConnectionString =
             "HostName=Grup-3-Devops.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=cXHMcmESQtlUTvhMJ8q5aQvzf9aPcWQ9JAN6fCc2r2Q=";
 
-        public  async Task CreteElevator()
+        public  async Task CreateElevator()
         {
             try
             {
