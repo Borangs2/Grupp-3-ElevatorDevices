@@ -104,7 +104,7 @@ namespace Elevator1
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Something went wrong: {ex}";
+                StatusMessage = $"Something went wrong";
 
             }
             
@@ -126,7 +126,7 @@ namespace Elevator1
         {
             while (true)
             {
-                if (DateTime.Compare(Elevator.LastUsed, DateTime.Now.AddMinutes(-10)) < 0)
+                if (DateTime.Compare(Elevator.LastUsed, DateTime.Now.AddMinutes(-10)) < 0 && Elevator.Status != ElevatorStatus.Disabled)
                 {
                     await GoToLowestFloorAsync();
                 }
