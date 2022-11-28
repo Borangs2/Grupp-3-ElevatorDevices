@@ -22,9 +22,13 @@ namespace Elevator1
         private readonly string _connectUrl;
         private readonly DeviceClient _deviceClient;
 
-        public CreateElevators(ElevatorModel elevator, string connectUrl)
+
+
+        public CreateElevators(ElevatorModel elevator, string connectUrl, int minLevel, int maxLevel)
         {
             Elevator = elevator;
+            Elevator.MinLevel = minLevel;
+            Elevator.MaxLevel = maxLevel;
             _connectUrl = connectUrl;
             _deviceClient = DeviceClient.CreateFromConnectionString(IoTHubConnectionString, Elevator.Id.ToString() );
         }
@@ -78,6 +82,8 @@ namespace Elevator1
                 twinCollection["doorStatus"] = Elevator.DoorStatus;
                 twinCollection["currentLevel"] = Elevator.CurrentLevel;
                 twinCollection["targetLevel"] = Elevator.TargetLevel;
+                twinCollection["minLevel"] = Elevator.MinLevel;
+                twinCollection["maxLevel"] = Elevator.MaxLevel;
                 await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
 
                 var twin = await _deviceClient.GetTwinAsync();
@@ -98,14 +104,14 @@ namespace Elevator1
 
                 while (true)
                 {
-                    StatusMessage = $"{Elevator.Name}: Current level: {Elevator.CurrentLevel}, Target level: {Elevator.TargetLevel}, Status: {Elevator.Status}, doorStatus: {Elevator.DoorStatus}";
+                    StatusMessage = $"{Elevator.Name} ({Elevator.MinLevel} - {Elevator.MaxLevel}): Current level: {Elevator.CurrentLevel}, Target level: {Elevator.TargetLevel}, Status: {Elevator.Status}, doorStatus: {Elevator.DoorStatus}";
                     await Task.Delay(TimeSpan.FromSeconds(2));
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Something went wrong";
-
+                Elevator.Status = ElevatorStatus.Error;
+                StatusMessage = $"Something went wrong: {ex.Message}";
             }
             
 
