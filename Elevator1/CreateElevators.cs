@@ -147,16 +147,16 @@ namespace Elevator1
             Elevator.LastUsed = DateTime.Now;
         }
 
-        public Task<MethodResponse> ChangeLevelDM(MethodRequest methodRequest, object userContext)
+        public async Task<MethodResponse> ChangeLevelDM(MethodRequest methodRequest, object userContext)
         {
             var payload = JsonConvert.DeserializeObject<dynamic>(methodRequest.DataAsJson);
             HttpStatusCode result = HttpStatusCode.BadRequest;
             if(payload != null)
-                result = ChangeLevelAsync(Convert.ToInt32(payload));
+                result = await ChangeLevelAsync(Convert.ToInt32(payload));
             
             if(result != HttpStatusCode.OK)
-                return Task.FromResult(new MethodResponse(new byte[0], 200));
-            return Task.FromResult(new MethodResponse(new byte[0], 400));
+                return new MethodResponse(new byte[0], 200);
+            return new MethodResponse(new byte[0], 400);
 
         }
 
