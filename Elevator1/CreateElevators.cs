@@ -182,7 +182,7 @@ namespace Elevator1
 
                         while (Elevator.CurrentLevel != Elevator.TargetLevel)
                         {
-                            await Task.Delay(TimeSpan.FromSeconds(4));
+                            await Task.Delay(TimeSpan.FromSeconds(3));
 
                             if (Elevator.CurrentLevel > Elevator.TargetLevel)
                                 Elevator.CurrentLevel -= 1;
