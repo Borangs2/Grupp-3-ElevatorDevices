@@ -45,4 +45,5 @@ while (true)
         statusBoard += $"{i}: {elevator.StatusMessage} \n";
     }
     Console.Write(statusBoard);
+    Task.Delay(100);
 }
