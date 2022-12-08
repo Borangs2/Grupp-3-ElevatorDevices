@@ -6,13 +6,11 @@ using System.Threading.Tasks;
 
 namespace Elevator1
 {
-    enum ElevatorStatus
+    public enum ElevatorStatus
     {
-        Open,
+        Disabled,
         Idle,
         Running,
-        DoorsOpen,
         Error,
-        Disabled
     }
 }
